@@ -24,8 +24,8 @@
 
 #ifndef _MSC_VER
 
-#define SOURCE_TS "tsfiles/ipcaster.ts"
-#define IPCASTER_EXEC "build/ipcaster -v 3 -s " "tsfiles/ipcaster.ts" " 127.0.0.1 50000"
+#define SOURCE_TS "tsfiles/test.ts"
+#define IPCASTER_EXEC "build/ipcaster -v 3 -s " "tsfiles/test.ts" " 127.0.0.1 50000"
 #define DELETEOUTPUT "rm out.ts"
 
 #endif
