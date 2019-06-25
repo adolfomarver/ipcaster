@@ -78,7 +78,7 @@ ipcaster -s ts_file target_ip target_port ... [-s ...]
 
  ## Examples
 
-We'll use VLC in these examples to watch to the video output.
+We'll use VLC in these examples to watch at the video output.
 
 ```sh
 # Installing VLC on Ubuntu
