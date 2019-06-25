@@ -7,7 +7,7 @@ The IP encapsulation is based on the SMPTE2022-2 standard.
 
 ### About MPEG-TS (ISO/IEC 13818-1 or ITU-T Recommendation H.222.0)
 
-This format is the standard media container for TV (terrestrial, satelite, cable) media broadcasting systems (DVB, ATSC, ISDB). The media container allows to encapsulates and multiplex media streams such as video (mpeg-2, h.264, hevc,...), audio (mpeg-1 layer II, aac, ac3,...), metadata and signaling (teletext, subtitles, ...)
+This format is the standard media container for TV (terrestrial, satelite, cable) media broadcasting systems (DVB, ATSC, ISDB). The media container allows to encapsulate and multiplex media streams such as video (mpeg-2, h.264, hevc,...), audio (mpeg-1 layer II, aac, ac3,...), metadata and signaling (teletext, subtitles, ...)
 
 Sample TS files are included with the project in the **tsfiles/** directory
 
@@ -54,8 +54,14 @@ Coming soon...
 ```
 
 ## Tests
+If your working directory is not "ipcaster/build" you need to "cd" there before execute the tests.
 
-Coming soon...
+The UDP port 50000 must be free
+
+```sh
+# Run tests
+./tests
+```
 
 ## Usage
 
@@ -88,7 +94,7 @@ vlc udp://@:50000
 Open another terminal( go to "ipcaster/build" directory) 
 
 ```sh
-# Send the example.ts file
+# Send the test.ts file
 ./ipcaster -s ../tsfiles/test.ts 127.0.0.1 50000
 ```
 

@@ -24,8 +24,8 @@
 
 #ifndef _MSC_VER
 
-#define SOURCE_TS "tsfiles/test.ts"
-#define IPCASTER_EXEC "build/ipcaster -v 3 -s " "tsfiles/test.ts" " 127.0.0.1 50000"
+#define SOURCE_TS "../tsfiles/test.ts"
+#define IPCASTER_EXEC "./ipcaster -v 3 -s " SOURCE_TS " 127.0.0.1 50000"
 #define DELETEOUTPUT "rm out.ts"
 
 #endif
@@ -51,6 +51,7 @@ int main(int argc, char* argv[])
     }
     catch(std::exception& e) {
         std::cout << e.what() << std::endl;
+        std::cout << "Tests failed !!!" << std::endl;
         return -1;
     }
 
