@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": ["-s", "tsfiles/ipcaster.ts", "127.0.0.1", "50000"],
+            "args": ["-s", "tsfiles/test.ts", "127.0.0.1", "50000"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

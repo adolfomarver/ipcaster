@@ -42,7 +42,7 @@ public:
      * INFO = Informative messages.
      * DEBUG0, DEBUG1 = Debug messages (several incremental levels)
     */
-    enum class Level { QUIET = 0, FATAL = 1, ERROR = 2, WARNING = 3, INFO = 4, DEBUG0 = 5, DEBUG1 = 6};
+    enum class Level { QUIET = 0, FATAL = 1, ERROR0 = 2, WARNING = 3, INFO = 4, DEBUG0 = 5, DEBUG1 = 6};
 
     /**
      * Constructor
@@ -79,7 +79,7 @@ public:
         verbosity_ = verbosity;
 
         fatal_.rdbuf((verbosity >= Level::FATAL) ? std::clog.rdbuf() : nullptr);
-        error_.rdbuf((verbosity >= Level::ERROR) ? std::clog.rdbuf() : nullptr);
+        error_.rdbuf((verbosity >= Level::ERROR0) ? std::clog.rdbuf() : nullptr);
         warning_.rdbuf((verbosity >= Level::WARNING) ? std::clog.rdbuf() : nullptr);
         info_.rdbuf((verbosity >= Level::INFO) ? std::clog.rdbuf() : nullptr);
         debug_.rdbuf((verbosity >= Level::DEBUG0) ? std::clog.rdbuf() : nullptr);        
@@ -106,7 +106,7 @@ public:
                 level = Level::FATAL;
                 break;
             case 2:
-                level = Level::ERROR;
+                level = Level::ERROR0;
                 break;
             case 3:
                 level = Level::WARNING;

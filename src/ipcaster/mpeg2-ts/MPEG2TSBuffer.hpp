@@ -40,7 +40,7 @@ public:
      * 
      * @param packet_size TS packet's size
      */
-    MPEG2TSBuffer(size_t num_packets_capacity, uint16_t packet_size) 
+    MPEG2TSBuffer(size_t num_packets_capacity, uint8_t packet_size) 
         :   Buffer(num_packets_capacity*packet_size), 
             packet_size_(packet_size),
             num_packets_(0)
@@ -66,7 +66,7 @@ public:
      * 
      * @param parent Shared pointer to the parent
      */
-    MPEG2TSBuffer(void* data, uint64_t* timestamps, size_t num_packets_capacity, size_t num_packets_size, uint16_t packet_size, std::shared_ptr<MPEG2TSBuffer> parent)
+    MPEG2TSBuffer(void* data, uint64_t* timestamps, size_t num_packets_capacity, size_t num_packets_size, uint8_t packet_size, std::shared_ptr<MPEG2TSBuffer> parent)
         :   Buffer(data, num_packets_capacity*packet_size, num_packets_size*packet_size, parent),
             packet_size_(packet_size),
             num_packets_(num_packets_size)
@@ -137,7 +137,7 @@ private:
     size_t num_packets_;
 
     // TS packet size (188 / 204)
-    uint16_t packet_size_;
+    uint8_t packet_size_;
 
     // Allocated space for timestamps (only allocated if this is the parent buffer)
     std::unique_ptr<uint64_t[]> allocated_timestamps_;

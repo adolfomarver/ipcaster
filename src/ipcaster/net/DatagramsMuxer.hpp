@@ -309,7 +309,7 @@ public:
 
             auto nanoseconds = (burst_sizes.back().first - burst_sizes.front().first);
 
-            return bytes * 8 * 1000000000 / nanoseconds.count();
+			bitrate =  bytes * 8 / (nanoseconds.count() / 1000000000.0);
         }
 
         return bitrate;
@@ -432,7 +432,7 @@ private:
     {
         // Avoid first call because t_last_burst is not initialized
         if(send_stats_.max_timer_ms < 0.001) {
-            send_stats_.max_timer_ms = 0.001;
+            send_stats_.max_timer_ms = (float)0.001;
             return;
         }
 

@@ -137,7 +137,7 @@ public:
     }
 
     // Defines the PCRs distance threshold to compute bitrate
-    static const uint64_t BITRATE_COMPUTE_PCR_DISTANCE = (PCRCLOCKFREQUENCY * 3);
+    static const uint64_t BITRATE_COMPUTE_PCR_DISTANCE = static_cast<uint64_t>(PCRCLOCKFREQUENCY * 3);
 
     /** 
      * Calculates the file's bitrate based on PCR distance vs bytes.
@@ -241,7 +241,7 @@ private:
 
         while(packets--) {
             // packet timestamp in 27Mhz ticks for the base_packet_index position
-            (*ts++) = base_packet_index++ * packet_size_* 8 * PCRCLOCKFREQUENCY / (double)bitrate;
+            (*ts++) = static_cast<uint64_t>(base_packet_index++ * packet_size_* 8 * PCRCLOCKFREQUENCY / (double)bitrate);
         }
     }
 };

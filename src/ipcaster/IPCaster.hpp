@@ -237,8 +237,10 @@ public:
      */
     void printStatus()
     {
-        using Clock = std::chrono::high_resolution_clock;
+        using Clock = std::chrono::system_clock;
         using TimePoint = std::chrono::time_point<Clock>;
+
+//Clock::duration stream_time(std::chrono::nanoseconds(10));
 
         std::lock_guard<std::mutex> lock(streams_mutex_);
 
@@ -246,13 +248,13 @@ public:
 
         if(streams.size()) {
 
-            Clock::duration stream_time(streams[0]->getTime());
-            auto in_time_t = Clock::to_time_t(TimePoint(stream_time));
+            auto stream_time = streams[0]->getTime();
+			time_t in_time_t = std::chrono::duration_cast<std::chrono::seconds> (stream_time).count();
 
             std::stringstream ss;
             ss << std::put_time(std::gmtime(&in_time_t), "%T");
 
-            Clock::duration max_burst_duration;
+            std::chrono::nanoseconds max_burst_duration;
 
             auto bandwidth = datagrams_muxer_.getOutputBandwidth(max_burst_duration);
 

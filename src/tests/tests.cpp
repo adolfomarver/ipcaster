@@ -22,7 +22,13 @@
 //#include "FIFOTest.hpp"
 #include "SendReceiveTest.hpp"
 
-#ifndef _MSC_VER
+#ifdef _MSC_VER // Windows
+
+#define SOURCE_TS "..\\tsfiles\\test.ts"
+#define IPCASTER_EXEC "release\\ipcaster -v 3 -s " SOURCE_TS " 127.0.0.1 50000"
+#define DELETEOUTPUT "del out.ts"
+
+#else // Linux / Unix
 
 #define SOURCE_TS "../tsfiles/test.ts"
 #define IPCASTER_EXEC "./ipcaster -v 3 -s " SOURCE_TS " 127.0.0.1 50000"
