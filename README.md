@@ -134,7 +134,7 @@ The UDP port 50000 must be free
 
 The easiest and cheapest way to create TS files is by using the open source application FFmpeg. Here is an example for a typical distribution bitrate of 4Mbps using two pass encoding.
 
-Just substitute "myvideo.mp4" with the name of the file you want to encode.
+Just substitute "myvideo.mp4" for the name of the file you want to encode.
 
 ```sh
 # Pass 1
