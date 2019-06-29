@@ -73,7 +73,7 @@ In another terminal(go to "ipcaster/build" directory)
 
 ## Docker image
 
-Donwloadable image is avaiable at Dockerhub. In case you use Docker follow the next steps to use ipcaster from Docker.
+Downloadable image is available at Dockerhub. In case you use Docker follow the next steps to use ipcaster from Docker.
 
 We will use VLC to watch at the video stream.
 Open a console and type
@@ -132,7 +132,7 @@ The UDP port 50000 must be free
 ```
 ## How to create broadcast compatible MPEG TS files
 
-The easiest and chipest way to create TS files is by using FFmpeg. Here is an example for a tipical distribution bitrate of 4Mbps using two pass encoding.
+The easiest and cheapest way to create TS files is by using FFmpeg. Here is an example for a typical distribution bitrate of 4Mbps using two pass encoding.
 
 Just substitute "myvideo.mp4" for the name of the file you want to encode.
 
