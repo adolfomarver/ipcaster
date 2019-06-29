@@ -56,7 +56,7 @@ Open another terminal( go to "ipcaster/build" directory)
 
 ### Sending several files simultaneously
 ```sh
-# Launch 2 VLCs (in two diffrent terminals) listening on ports 50000, 50001
+# Launch 2 VLCs (in two different terminals) listening on ports 50000, 50001
 vlc udp://@:50000
 vlc udp://@:50001
 ```
