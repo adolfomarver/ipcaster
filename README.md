@@ -7,7 +7,7 @@ The IP encapsulation is based on the SMPTE2022-2 standard.
 
 ### About MPEG-TS (ISO/IEC 13818-1 or ITU-T Recommendation H.222.0)
 
-This format is the standard media container for TV (terrestrial, satelite, cable) media broadcasting systems (DVB, ATSC, ISDB). The media container allows to encapsulate and multiplex media streams such as video (mpeg-2, h.264, hevc,...), audio (mpeg-1 layer II, aac, ac3,...), metadata and signaling (teletext, subtitles, ...). All those streams can be grouped in programs and many different programs can be holded in one TS.
+This format is the standard media container for TV (terrestrial, satellite, cable) media broadcasting systems (DVB, ATSC, ISDB). The media container allows to encapsulate and multiplex media streams such as video (mpeg-2, h.264, hevc,...), audio (mpeg-1 layer II, aac, ac3,...), metadata and signaling (teletext, subtitles, ...). All those streams can be grouped in programs and many different programs can be transported in one TS.
 
 Sample TS files are included with the project in the **tsfiles/** directory
 
@@ -26,7 +26,7 @@ ipcaster -s ts_file target_ip target_port ... [-s ...]
 ```
 
 
-**ts_file** Is the file to sent.
+**ts_file** Is the file to send.
 
 **target_ip** Is the IPv4 address of the endpoint.
 
@@ -118,6 +118,52 @@ mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make
+
+```
+Windows:
+
+You'll need *VisualStudio* and *cmake* installed in the machine.
+
+You also have to download or build yourself boost libraries
+https://www.boost.org/users/download
+
+
+
+```sh
+# Clone the repository
+
+https://github.com/adolfomarver/ipcaster.git
+
+# CMake build
+
+cd ipcaster
+md build
+cd build
+cmake ..
+
+```
+Now you should be able to open ipcaster/build/ipcaster.sln from Visual Studio.
+
+note: If boost is not detected, or link fails because its libs are not found:
+1) Try to update cmake to the latest version. 
+2) You may have to manually set the boost paths and version in the cmake file. Edit **ipcaster\CMakeLists.txt**. Substitute where **1_67_0** appears for your paths and version.
+```sh
+if(MSVC)
+	if(NOT HOME)
+    		# Try for USERPROFILE as HOME equivalent:
+		string(REPLACE "\\" "/" HOME "$ENV{USERPROFILE}")
+	endif()
+
+	set (BOOST_ROOT ${HOME}/repos/boost_1_67_0)
+	set (BOOST_INCLUDEDIR ${HOME}/repos/boost_1_67_0)
+	set (BOOST_LIBRARYDIR ${HOME}/repos/boost_1_67_0/stage/lib)
+
+    set(Boost_USE_STATIC_LIBS        ON) # only find static libs
+    set(Boost_USE_MULTITHREADED      ON)
+    set(Boost_USE_STATIC_RUNTIME    OFF)
+    find_package(Boost 1.67.0 REQUIRED COMPONENTS system program_options date_time regex)
+    include_directories(${Boost_INCLUDE_DIRS})
+endif()
 
 ```
 
