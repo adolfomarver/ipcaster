@@ -34,7 +34,7 @@ class UDPReceiver
 {
 public:
 
-    using DatagramBuffer = boost::asio::mutable_buffer;
+    using DatagramBuffer = boost::asio::mutable_buffers_1;
     using SystemError = boost::system::system_error;
 
     /**

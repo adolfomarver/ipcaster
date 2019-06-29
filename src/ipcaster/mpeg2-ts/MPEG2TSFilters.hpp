@@ -48,7 +48,7 @@ public:
 
         TSPacket packet(static_cast<uint8_t*>(ts_buffer->data()), ts_buffer->packetSize());
 
-        auto packet_index = 0;
+        size_t packet_index = 0;
         auto max_packets = ts_buffer->numPackets();
 
         while(packet_index < max_packets) {

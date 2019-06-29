@@ -8,9 +8,13 @@ cmake_minimum_required(VERSION 3.0)
 add_executable(tests tests.cpp)
 target_include_directories(tests PRIVATE ../)
 #target_link_libraries(tests ${GTEST_LIBRARIES} pthread boost_system)
-target_link_libraries(tests pthread boost_system)
-#target_link_libraries(tests boost_system)
-#target_include_directories(tests PRIVATE "C:/Program Files (x86)/boost_1_70_0")
-#link_directories("C:/Program Files (x86)/boost_1_70_0/stage/lib")
+
+# Windows
+if (MSVC)
+	target_link_libraries(tests ${Boost_LIBRARIES})
+else()
+# Linux
+	target_link_libraries(tests pthread boost_system) # for linux
+endif()
 
 add_test(NAME all_tests COMMAND tests)

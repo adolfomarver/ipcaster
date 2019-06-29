@@ -31,7 +31,7 @@ namespace ipcaster
 	 * Best methods, relative to using Windows high precission timers
 	 * at Kernel level could be implemented to achive jitter near 1(ms)
 	 */
-	class Timer
+	class TimerSleep
 	{
 	public:
 
@@ -42,7 +42,7 @@ namespace ipcaster
 		 *
 		 * @throws std::exception
 		 */
-		Timer(const std::chrono::nanoseconds& period)
+		TimerSleep(const std::chrono::nanoseconds& period)
 			: period_(period)
 		{
 		}

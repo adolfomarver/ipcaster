@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <thread>
+#include <future>
 
 //#include <gtest/gtest.h>
 
@@ -24,8 +25,8 @@
 
 #ifdef _MSC_VER // Windows
 
-#define SOURCE_TS "..\\tsfiles\\test.ts"
-#define IPCASTER_EXEC "release\\ipcaster -v 3 -s " SOURCE_TS " 127.0.0.1 50000"
+#define SOURCE_TS "..\\..\\tsfiles\\test.ts"
+#define IPCASTER_EXEC "ipcaster -v 3 -s " SOURCE_TS " 127.0.0.1 50000"
 #define DELETEOUTPUT "del out.ts"
 
 #else // Linux / Unix
@@ -46,6 +47,7 @@ int main(int argc, char* argv[])
 
         auto future_ipcaster = std::async(std::launch::async, [&] () { 
                     std::this_thread::sleep_for(std::chrono::seconds(1));
+					printf("%s\n", IPCASTER_EXEC);
                     return system(IPCASTER_EXEC);
                 });
 
@@ -53,7 +55,7 @@ int main(int argc, char* argv[])
 
         auto rs = system(DELETEOUTPUT);
 
-        return future_ipcaster.get();
+        //return future_ipcaster.get();
     }
     catch(std::exception& e) {
         std::cout << e.what() << std::endl;

@@ -18,7 +18,6 @@
 
 #include <memory>
 #include <json.h>
-#include <filesystem>
 
 #include "ipcaster/base/Observer.hpp"
 #include "ipcaster/source/StreamSource.h"
