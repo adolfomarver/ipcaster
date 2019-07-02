@@ -72,6 +72,9 @@ public:
     /** @returns The send timepoint */    
     std::chrono::high_resolution_clock::time_point sendTick() { return send_tick_; }
 
+	/** Sets the send_tick */
+	void setSendTick(std::chrono::high_resolution_clock::time_point send_tick) { send_tick_ = send_tick; }
+
 private:
 
     std::shared_ptr<Buffer> payload_;

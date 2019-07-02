@@ -181,7 +181,15 @@ public:
         return estimated_buffers_per_second_;
     }
 
-    
+    /** 
+     * @returns The bitrate of the stream in bps
+     */
+    uint64_t estimatedBitrate() 
+    {
+        return bitrate_;
+    }
+
+
     /** 
      * Reads the next payload buffer from the file
      * @returns A shared pointer to the buffer

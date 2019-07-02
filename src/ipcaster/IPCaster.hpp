@@ -50,6 +50,9 @@ public:
 
     }
 
+	// More than 1(s) at 270Mbps 1 TS packet per datagram
+	static const uint32_t MAX_FIFO_DATAGRAMS_PER_STREAM = 180000; 
+
     /**
      * Create a stream, add it to the streams list and start it
      *
@@ -62,7 +65,7 @@ public:
         std::lock_guard<std::mutex> lock(streams_mutex_);
 
         auto udp_stream = datagrams_muxer_.createStream(json_stream["endpoint"]["ip"].asString(), 
-            static_cast<uint16_t>(json_stream["endpoint"]["port"].asUInt()), 100);
+            static_cast<uint16_t>(json_stream["endpoint"]["port"].asUInt()));
 
         auto source = SourceFactory<MPEG2TSFileToUDP>::create(json_stream["source"].asString(), *udp_stream);
         auto stream = std::make_shared<Stream>(json_stream, source);
@@ -209,7 +212,7 @@ public:
             FuturesCollector::get().push(
                 std::async(std::launch::async, [&] (IPCaster* ip_caster, uint32_t stream_id) { 
                     Logger::get().info() << "Stream" << stream_id << " Ended" << std::endl; 
-                    ip_caster->deleteStream(stream_id, true);
+                    ip_caster->deleteStream(stream_id);
                 }, &ip_caster_, stream_.id())
             );
         }
@@ -240,8 +243,6 @@ public:
         using Clock = std::chrono::system_clock;
         using TimePoint = std::chrono::time_point<Clock>;
 
-//Clock::duration stream_time(std::chrono::nanoseconds(10));
-
         std::lock_guard<std::mutex> lock(streams_mutex_);
 
         auto streams = datagrams_muxer_.getStreams();
@@ -258,14 +259,14 @@ public:
 
             auto bandwidth = datagrams_muxer_.getOutputBandwidth(max_burst_duration);
 
-             if(Logger::get().getVerbosity() >= Logger::Level::INFO) {
-                printf("\rIP casting %u streams. Time %s.%d Bandwidth %.3fMbps Burst %.1f(ms)      ", static_cast<uint32_t>(streams.size()),
-                    ss.str().c_str(),
-                    static_cast<int>(stream_time.count()/100000000.0)%10, 
-                    bandwidth / 1000000.0,
-                    max_burst_duration.count() / 1000000.0);
-                fflush(stdout);
-             }
+            if(Logger::get().getVerbosity() >= Logger::Level::INFO) {
+            printf("\rIP casting %u streams. Time %s.%d Bandwidth %.3fMbps Burst %.1f(ms)      ", static_cast<uint32_t>(streams.size()),
+                ss.str().c_str(),
+                static_cast<int>(stream_time.count()/100000000.0)%10, 
+                bandwidth / 1000000.0,
+                max_burst_duration.count() / 1000000.0);
+            fflush(stdout);
+            }
         }
     }
 

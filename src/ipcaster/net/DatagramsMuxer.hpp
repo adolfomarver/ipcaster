@@ -48,10 +48,14 @@ public:
      * sends in milliseconds, this will influence the size of minimum 
      * burst send by the ethernet.
      * 
+	 * @param send_buffering_preroll The amount of stream (in time)
+	 * that is buffered before start sending
+
      * @throws std::exception 
      */
-    DatagramsMuxer(std::chrono::milliseconds burst_period = std::chrono::milliseconds(4)) :
+    DatagramsMuxer(std::chrono::milliseconds burst_period = std::chrono::milliseconds(4), std::chrono::milliseconds send_buffering_preroll = std::chrono::milliseconds(40)) :
         timer_(burst_period), 
+		send_buffering_preroll_(send_buffering_preroll),
         exit_threads_(false)
     {
         send_stats_.max_prepare_ms = 0;
@@ -62,6 +66,10 @@ public:
         send_stats_.min_timer_ms = std::numeric_limits<float>::max();
         send_stats_.high_burst_count_ = 0;
 
+		prepared_burst_.clear();
+        prepared_burst_spin.clear();
+
+		thread_prepare_ = std::thread(&DatagramsMuxer<Timer>::threadPrepare, this);
         thread_sender_ = std::thread(&DatagramsMuxer<Timer>::threadSender, this);
     }
 
@@ -75,6 +83,15 @@ public:
 
         if(thread_sender_.joinable())
             thread_sender_.join();
+
+		{
+			std::lock_guard <std::mutex> lock(prepare_cv_mutex_);
+			event_prepare_ = true;
+			prepare_cv_.notify_one();
+		}
+
+		if (thread_prepare_.joinable())
+			thread_prepare_.join();
     }
 
     /** 
@@ -93,17 +110,22 @@ public:
          * 
          * @param target_port Target port of the endpoint
          * 
-         * @fifo_num_datagrams Size of the fifo in datagrams
+		 *
+		 * @param parent Refence to the parent object
          */
-        Stream(const std::string& target_ip, uint16_t target_port, size_t fifo_num_datagrams)
+        Stream(const std::string& target_ip, uint16_t target_port, DatagramsMuxer<Timer>& parent)
             :   target_ip_(target_ip), 
                 target_port_(target_port), 
-                fifo_(fifo_num_datagrams),
                 is_sync_point_set_(false),
                 is_start_point_set_(false),
-                tail_send_tick_(std::chrono::time_point<Clock>())
+                tail_send_tick_(std::chrono::time_point<Clock>()),
+				parent_(parent)
 
         {
+            // Initial FIFO size, this size should be adjusted later by calling setBuffering
+    		const uint32_t INITIAL_FIFO_DATAGRAMS_PER_STREAM = 100;
+
+            fifo_ = std::make_unique<FIFO<std::shared_ptr<Datagram>>>(INITIAL_FIFO_DATAGRAMS_PER_STREAM);
             last_popped_datagram_tick_.store(0, std::memory_order::memory_order_relaxed);
         }
 
@@ -125,8 +147,7 @@ public:
             datagram->setTargetIP(target_ip_);
             datagram->setTargetPort(target_port_);
 
-            fifo_.push(datagram); 
-
+            fifo_->push(datagram); 
             tail_send_tick_.store(datagram->sendTick());
         }
 
@@ -141,18 +162,24 @@ public:
         {
             std::shared_ptr<Datagram> datagram;
 
-            if(fifo_.readAvailable()) {
+            if(fifo_->readAvailable()) {
 
                 if(!is_start_point_set_) {
-                    start_point_ = now;
-                    is_start_point_set_ = true;
+					// The send can be started if preroll buffering has been met
+					if (bufferedTime() >= parent_.send_buffering_preroll_) {
+						start_point_ = now;
+						is_start_point_set_ = true;
+					}
+					else
+						return datagram;
                 }
 
-                auto normalized_datagram_tick = fifo_.front()->sendTick() - sync_point_ + start_point_;
+                auto normalized_datagram_tick = fifo_->front()->sendTick() - sync_point_ + start_point_;
                 if(normalized_datagram_tick < now) {
-                    datagram = fifo_.front();
-                    fifo_.pop();
+                    datagram = fifo_->front();
+                    fifo_->pop();
                     last_popped_datagram_tick_.store(datagram->sendTick().time_since_epoch().count(), std::memory_order_relaxed);
+					datagram->setSendTick(normalized_datagram_tick);
                 }
             }
 
@@ -167,15 +194,46 @@ public:
             // Active wait is not the best way to do this, but for flush
             // a 100(ms) latency is tolerable, could be improved if
             // necesary
-            while(fifo_.readAvailable()) 
+            while(fifo_->readAvailable()) 
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+		/**
+		 * When no more push will be done in this stream, the
+		 * producer should call this function to free the 
+		 * resources and close the stream.
+		 */
+		void close()
+		{
+			parent_.onCloseStream(this);
+		}
+
+        /**
+        * Called by the producer with information that helps to
+        * setup the size of buffers
+        * 
+        * @param estimated_buffers_per_second Estimated number of buffers per second
+        * that will be pushed by the producer
+        * 
+        * @param estimated_bitrate Estimated bitrate that will be produced by the 
+        * producer
+        * 
+        * @pre This function must be called before any buffer has been pushed
+        */
+        void setBuffering(size_t estimated_buffers_per_second, uint64_t estimated_bitrate)
+        {
+            // Capacity for 3 times the preroll (just in case)
+            size_t fifo_needed_size = static_cast<size_t>(3 * estimated_buffers_per_second * parent_.send_buffering_preroll_.count() / 1000.0);
+
+            // Change the fifo for a new one adjusted to stream buffering requirements
+            fifo_ = std::make_unique<FIFO<std::shared_ptr<Datagram>>>(fifo_needed_size);
         }
 
         /** @returns The total amount of stream time (in milliseconds) buffered in the fifo */
         std::chrono::milliseconds bufferedTime()
         {
-            if(fifo_.readAvailable())
-                return std::chrono::duration_cast<std::chrono::milliseconds>(tail_send_tick_.load(std::memory_order_relaxed) - fifo_.front()->sendTick());
+			if (fifo_->readAvailable()) 
+				return std::chrono::duration_cast<std::chrono::milliseconds>(tail_send_tick_.load(std::memory_order_relaxed) - fifo_->front()->sendTick());
             else
                 return std::chrono::milliseconds(0);
         }
@@ -204,7 +262,7 @@ public:
 
         uint16_t target_port_;
 
-        FIFO<std::shared_ptr<Datagram>> fifo_;
+        std::unique_ptr<FIFO<std::shared_ptr<Datagram>>> fifo_;
 
         // Send tick of last datagram in the fifo
         std::atomic<Clock::time_point> tail_send_tick_;
@@ -225,11 +283,16 @@ public:
         // Last popped datagram time
         std::atomic<Clock::time_point::rep> last_popped_datagram_tick_;
 
+		// Parent reference
+		DatagramsMuxer& parent_;
+
     }; // DatagramsMuxter::Stream
 
     /** @returns A vector of references to the streams of the DatagramsMuxer */
     std::vector<std::shared_ptr<Stream>> getStreams() 
     {
+		std::lock_guard<std::mutex> lock(mutex_streams_);
+
         return streams_;
     }
 
@@ -240,15 +303,13 @@ public:
      * 
      * @param target_port Destination port for all the datagrams pushed to the stream
      * 
-     * @param fifo_num_datagrams Number of datagram references that can be stored in the stream's fifo
-     * 
      * @returns A reference to the new stream
      */
-    std::shared_ptr<Stream> createStream(const std::string& target_ip, uint16_t target_port, size_t fifo_num_datagrams)
+    std::shared_ptr<Stream> createStream(const std::string& target_ip, uint16_t target_port)
     {
         std::lock_guard<std::mutex> lock(mutex_streams_);
 
-        streams_.push_back(std::make_shared<Stream>(target_ip, target_port, fifo_num_datagrams));
+        streams_.push_back(std::make_shared<Stream>(target_ip, target_port, *this));
 
         return streams_.back();
     }
@@ -320,6 +381,8 @@ private:
     // Main loop thread of the DatagramsMuxer
     std::thread thread_sender_;
 
+	std::thread thread_prepare_;
+
     // When true the thread_sender exits 
     bool exit_threads_;
 
@@ -341,7 +404,15 @@ private:
     // Last bursts sizes and times useful for output bitrate estimation
     std::vector<std::pair<Clock::time_point, size_t>> last_bursts_sizes_;
 
-    std::mutex mutex_burst_sizes_;
+	std::mutex mutex_burst_sizes_;
+
+	// Indicates amount of time of the stream that is buffered before start sending
+	std::chrono::milliseconds send_buffering_preroll_;
+
+	// Condition to wake-up prepareThread
+	std::condition_variable prepare_cv_;
+	bool event_prepare_;
+	std::mutex prepare_cv_mutex_;
 
     /** 
      * A vector of datagrams references and their endpoints that will
@@ -349,18 +420,47 @@ private:
      */
     struct Burst
     {
-        std::vector<ip::udp::endpoint> endpoints;
-        std::vector<std::shared_ptr<Datagram>> datagrams;
+		struct Element
+		{
+			std::shared_ptr<Datagram> datagram;
+			ip::udp::endpoint endpoint;
+		};
+
+        std::vector<Element> elements;
+        
         size_t size;
-        inline void clear() { datagrams.clear(); endpoints.clear(); size = 0; }
+        inline void clear() { elements.clear(); size = 0; }
     };
+
+	// Burst ready already popped from the streams and ready to send
+	Burst prepared_burst_;
+
+	// Spinlock to access prepared_burst_
+	std::atomic_flag prepared_burst_spin;
+
+	/**
+	 * Removes the stream from the streams vector
+	 */
+	void onCloseStream(Stream* stream)
+	{
+		std::lock_guard<std::mutex> lock(mutex_streams_);
+
+		for (auto it = streams_.cbegin(); it != streams_.cend(); it++) {
+			if ((*it).get() == stream) {
+				streams_.erase(it);
+				return;
+			}
+		}
+
+		assert(false); // this should never execute
+	}
 
     /** 
      * Main loop of the sending process:
      * - Waits for an interrupt from the timer.
-     * - Prepare a burst with the datagrams, from all streams, which 
+     * - Send a burst from the "prepared_burst_" with all datagrams which 
+	 * - Awakes threadPrepare.
      * send_tick < now.
-     * - Sends the datagrams to their endpoints
      */
     void threadSender()
     {
@@ -372,26 +472,84 @@ private:
 
             auto now = timer_.wait();
 
-            prepareBurst(now, burst);
+			getSendBurst(now, burst);
             auto t_prepare = Clock::now();
 
             sendBurst(burst);
             auto t_send = Clock::now();
 
-            if(burst.datagrams.size() > 0)
+            if(burst.elements.size() > 0)
                 keepSendStats(now, t_last_burst_, t_prepare, t_send, burst);
 
             burst.clear();
             t_last_burst_ = now;
+
+			std::lock_guard <std::mutex> lock(prepare_cv_mutex_);
+			event_prepare_ = true;
+			prepare_cv_.notify_one();
         }
     }
+
+	/**
+	 * Main loop of the preparing process:
+	 * After every sending this thread is awaken.
+	 * The thread look in the streams, gather new datagrams to be
+	 * sent and adds them to "prepared_burst_".
+	 * The idea is to have "send_buffering_preroll_" milliseconds
+	 * always buffered in "prepared_burst", so "send_buffering_preroll_" 
+	 * should be several times lower than "burst_period" to asure there will always 
+	 * be buffered stream when the threadSender awakes to send
+	 * the next burst
+	 */
+	void threadPrepare()
+	{
+		while (!exit_threads_) {
+
+			// Prepare the datagrams "send_buffering_preroll_" milliseconds ahead
+			auto now = timer_.now() + send_buffering_preroll_;
+			prepareBurst(now);
+
+			// Wait until threadSender notifies
+			{
+				std::unique_lock<std::mutex> lock(prepare_cv_mutex_);
+				prepare_cv_.wait(lock, [&] {return event_prepare_; });
+				event_prepare_ = false;
+			}
+		}
+	}
+
+	/**
+	 * Extract datagrams from the streams and stores them in
+	 * prepared_burst_
+	 */
+	void getSendBurst(const Clock::time_point& now, Burst& send_burst)
+	{
+		while (prepared_burst_spin.test_and_set(std::memory_order_acquire));  // acquire lock
+
+		// Gather the datagrams with send_tick < now
+		for (auto element = prepared_burst_.elements.cbegin(); element != prepared_burst_.elements.cend(); element++) {
+			if (element->datagram->sendTick() < now) {
+				send_burst.elements.push_back(*element);
+				send_burst.size += element->datagram->payload()->size();
+			}
+			else {
+				// remove the datagrams to send from the prepared burst
+				prepared_burst_.elements.erase(prepared_burst_.elements.cbegin(), element);
+				break; // The first element <= now breaks the loop
+			}
+		}
+
+		prepared_burst_spin.clear(std::memory_order_release); // release lock
+	}
 
     /** 
      * Build the burst with the datagrams that already expired
      * @todo Work in the multiplexing algorithm to improve efficiency
      */
-    void prepareBurst(const Clock::time_point& now, Burst& burst)
+    void prepareBurst(const Clock::time_point& now)
     {
+		std::lock_guard<std::mutex> lock(mutex_streams_);
+
         bool datagrams_added = false;
 
         do
@@ -400,11 +558,21 @@ private:
 
             // Check front packet of every stream, if send_tick < now  then (is elegible) move it to burst
             for(auto& stream : streams_) {
+				struct Burst::Element burst_element;
                 if(auto datagram = stream->popFrontDatagramElegible(now)) {
-                    burst.endpoints.emplace_back(datagram->endpoint());
-                    burst.datagrams.push_back(datagram);
-                    datagrams_added = true;
-                    burst.size += datagram->payload()->size();
+					burst_element.datagram = datagram;
+					burst_element.endpoint = datagram->endpoint();
+					
+					// Add the datagram to the prepared_burst
+
+					while (prepared_burst_spin.test_and_set(std::memory_order_acquire)) // acquire lock
+						std::this_thread::yield();  
+					
+					prepared_burst_.elements.push_back(burst_element);
+
+					prepared_burst_spin.clear(std::memory_order_release); // release lock
+
+					datagrams_added = true;
                 }
             }
 
@@ -414,12 +582,13 @@ private:
     /** Sends a group of datagrams to their endpoints */
     void sendBurst(Burst& burst)
     {
-        auto num_datagrams = burst.datagrams.size();
+        auto num_datagrams = burst.elements.size();
 
         for(size_t i=0; i<num_datagrams; i++) {
-            sender_.send(burst.endpoints[i], 
-                boost::asio::buffer((const void*)burst.datagrams[i]->payload()->data(), 
-                burst.datagrams[i]->payload()->size()));
+			const auto& element = burst.elements[i];
+            sender_.send(element.endpoint,
+                boost::asio::buffer((const void*)element.datagram->payload()->data(),
+				element.datagram->payload()->size()));
         }
     }
 

@@ -62,6 +62,8 @@ public:
         fifo_ = std::make_unique<FIFO<std::shared_ptr<Buffer>>>(parser_.estimatedBuffersPerSecond());
 
         source_name_ = file;
+
+		processor_.setBuffering(parser_.estimatedBuffersPerSecond(), parser_.estimatedBitrate());
     }
 
     /** 
@@ -186,6 +188,8 @@ private:
                     fifo_->pop();
                 }
                 else if(eof_reached_) {
+					processor_.flush();
+					processor_.close();
                     exit_threads_ = true;
                     notifyEOF();     
                 }

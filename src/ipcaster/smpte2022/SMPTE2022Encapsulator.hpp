@@ -115,7 +115,32 @@ public:
         consumer_.flush();
     }
 
-    
+	/**
+	* When no more push will be done close should be called
+	* to free the consumer resources
+	*/
+	void close()
+	{
+		consumer_.close();
+	}
+
+    /**
+	* Called by the producer with information that helps to
+    * setup the buffers
+    * 
+	* @param estimated_buffers_per_second Estimated number of buffers per second
+    * that will be pushed by the producer
+    * 
+    * @param estimated_bitrate Estimated bitrate that will be produced by the 
+    * producer
+	*/
+    void setBuffering(size_t estimated_buffers_per_second, uint64_t estimated_bitrate)
+    {
+        // Estimation of how many buffers per second this component will produce
+        auto next_estimated_buffers_per_second = estimated_bitrate / (ts_packets_per_datagram_ * 8 * 188);
+        consumer_.setBuffering(next_estimated_buffers_per_second, estimated_bitrate);
+    }
+
 private:
 
     // Number of ts packets to insert in every datagram

@@ -122,6 +122,12 @@ public:
     /** @returns The period of the timer */
     inline std::chrono::nanoseconds period() { return period_; }
 
+	/** @returns The current std::high_resolution_clock time. */
+	inline std::chrono::high_resolution_clock::time_point now()
+	{
+		return std::chrono::high_resolution_clock::now();
+	}
+
 private:
 
     event_base* event_base_;
