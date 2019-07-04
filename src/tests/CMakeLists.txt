@@ -17,4 +17,4 @@ else()
 	target_link_libraries(tests pthread boost_system) # for linux
 endif()
 
-add_test(NAME all_tests COMMAND tests)
+add_test(NAME all_tests COMMAND tests WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

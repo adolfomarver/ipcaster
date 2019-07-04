@@ -51,16 +51,19 @@ int main(int argc, char* argv[])
                     return system(IPCASTER_EXEC);
                 });
 
+        if(0 != future_ipcaster.get()) {
+            std::cerr << "failed!!! " << IPCASTER_EXEC;
+            return 1;
+        }
+
         send_receive_test.run();
 
         auto rs = system(DELETEOUTPUT);
-
-        //return future_ipcaster.get();
     }
     catch(std::exception& e) {
-        std::cout << e.what() << std::endl;
-        std::cout << "Tests failed !!!" << std::endl;
-        return -1;
+        std::cerr << e.what() << std::endl;
+        std::cerr << "Tests failed !!!" << std::endl;
+        return 1;
     }
 
     return 0;

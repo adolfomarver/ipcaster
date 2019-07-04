@@ -526,18 +526,23 @@ private:
 	{
 		while (prepared_burst_spin.test_and_set(std::memory_order_acquire));  // acquire lock
 
+        auto last_selected_element = prepared_burst_.elements.cend();
 		// Gather the datagrams with send_tick < now
 		for (auto element = prepared_burst_.elements.cbegin(); element != prepared_burst_.elements.cend(); element++) {
 			if (element->datagram->sendTick() < now) {
+                last_selected_element = element;
 				send_burst.elements.push_back(*element);
 				send_burst.size += element->datagram->payload()->size();
 			}
 			else {
-				// remove the datagrams to send from the prepared burst
-				prepared_burst_.elements.erase(prepared_burst_.elements.cbegin(), element);
-				break; // The first element <= now breaks the loop
+				// The first element <= now breaks the loop
+				break; 
 			}
 		}
+
+        // remove the datagrams selected to be sent from the prepared burst
+        if(last_selected_element != prepared_burst_.elements.cend())
+            prepared_burst_.elements.erase(prepared_burst_.elements.cbegin(), last_selected_element+1);
 
 		prepared_burst_spin.clear(std::memory_order_release); // release lock
 	}
@@ -569,7 +574,6 @@ private:
 						std::this_thread::yield();  
 					
 					prepared_burst_.elements.push_back(burst_element);
-
 					prepared_burst_spin.clear(std::memory_order_release); // release lock
 
 					datagrams_added = true;
