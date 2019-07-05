@@ -40,7 +40,7 @@ public:
             exit_threads_(false),
             error_code_(0)
     {
-        file_ = fopen(target_file.c_str(), "w");
+        file_ = fopen(target_file.c_str(), "wb");
 
         if(!file_)
             throw Exception(fndbg(ReceiverWriter) + "couldn't open file " + target_file + " - " + strerror(errno));
