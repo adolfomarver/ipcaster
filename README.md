@@ -79,7 +79,7 @@ We will use VLC to watch at the video stream.
 Open a console and type
 ```sh
 # Launch VLC listening on port 50000
-vlc udp://@50000
+vlc udp://@:50000
 ```
 
 In another console 
