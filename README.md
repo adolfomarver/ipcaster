@@ -50,7 +50,8 @@ https://github.com/adolfomarver/ipcaster.git
 cd ipcaster
 
 # Build the docker image. 
-# The Dockerfile installs the build dependencies, build ipcaster and run the tests in an intermediate stage. Then, in the final stage, generates a minimum dependency image with the required artifacts from the intermediate stage.
+# The Dockerfile installs the build dependencies, build ipcaster and run the tests in an intermediate stage. 
+# Then, in the final stage, generates a minimum dependency image with the required artifacts from the intermediate stage.
 docker build -t ipcaster .
 
 ```

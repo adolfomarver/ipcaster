@@ -1,0 +1,20 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: debian:stretch
+
+    steps:
+      - checkout
+
+      - run:
+          name: Setup build environment
+          command: ops/ubuntu/install-build-env.sh
+
+      - run:
+          name: Build
+          command: ops/ubuntu/build.sh
+
+      - run:
+          name: Test
+          command: ops/ubuntu/test.sh
