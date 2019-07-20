@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/adolfomarver/ipcaster.svg?style=svg)](https://circleci.com/gh/adolfomarver/ipcaster)
+
 # IPCaster
 > MPEG Transport Stream over IP Sender
 
