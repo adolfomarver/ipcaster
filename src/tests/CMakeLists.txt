@@ -18,3 +18,4 @@ else()
 endif()
 
 add_test(NAME all_tests COMMAND tests WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(all_tests PROPERTIES TIMEOUT 60)

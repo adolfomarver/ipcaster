@@ -1,0 +1,2 @@
+cd ipcaster/build
+ctest

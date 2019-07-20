@@ -13,11 +13,13 @@ Sample TS files are included with the project in the **tsfiles/** directory
 
 ## Platforms
 
-The code is written entirely in C++11 and can be build, at least, in the following platforms:
+The code is written in C++11 and can be build, at least, in the following platforms:
 
 * Linux on x86/x64
 * Raspbian on Raspberry PI 3 B+
 * Windows on x86/x64
+
+The project uses CMake to support cross-platform building.
 
 ## Usage
 
@@ -32,26 +34,47 @@ ipcaster -s ts_file target_ip target_port ... [-s ...]
 
 **target_port** Is the IP port of the endpoint.
 
- ## Examples
+## Build and test
 
-We'll use VLC in these examples to watch at the video output.
+DevOps scripts for all the supported platforms can be found at **ipcaster/ops/[platform]**.
+In the next section these scripts are use to build and test the application inside a Docker container
+
+## Build and Test in a Docker container
 
 ```sh
-# Installing VLC on Ubuntu
-sudo snap install vlc
+
+# Clone the repository
+https://github.com/adolfomarver/ipcaster.git
+
+# cd into ipcaster directory where Dockerfile resides
+cd ipcaster
+
+# Build the docker image. 
+# The Dockerfile installs the build dependencies, build ipcaster and run the tests in an intermediate stage. Then, in the final stage, generates a minimum dependency image with the required artifacts from the intermediate stage.
+docker build -t ipcaster .
+
 ```
 
-### Sending one file
+## Examples
+
+We'll use the docker image generated in the previous step
+We'll also need VLC in these examples to watch at the video output.
+
 ```sh
-# Launch VLC listening on port 50000
+# Install VLC
+sudo snap install vlc
+
+# Launch VLC listening in the port 50000
 vlc udp://@:50000
 ```
 
-Open another terminal( go to "ipcaster/build" directory) 
-
+In another console 
 ```sh
-# Send the ipcaster.ts file
-./ipcaster -s ../tsfiles/ipcaster.ts 127.0.0.1 50000
+# Find out your docker0 network interface IP address
+ip a # In my case 172.17.0.1
+
+# Run the container (the ipcaster.ts file is embedded in the image)
+docker run ipcaster ipcaster -s ipcaster/tsfiles/ipcaster.ts 172.17.0.1 50000
 ```
 
 ### Sending several files simultaneously
@@ -59,123 +82,15 @@ Open another terminal( go to "ipcaster/build" directory)
 # Launch 2 VLCs (in two different terminals) listening on ports 50000, 50001
 vlc udp://@:50000
 vlc udp://@:50001
-```
 
-In another terminal(go to "ipcaster/build" directory) 
+#In another console 
+#Run the container (ipcaster.ts and timer.ts files are embedded in the image)
+docker run ipcaster ipcaster -s ipcaster/tsfiles/ipcaster.ts 172.17.0.1 50000 -s ipcaster/tsfiles/timer.ts 172.17.0.1 50001
 
-```sh
-# Send the ipcaster.ts (port 50000) and timer.ts (port 50001)
-./ipcaster -s ../tsfiles/ipcaster.ts 127.0.0.1 50000 \
--s ../tsfiles/timer.ts 127.0.0.1 50001
 ```
 
 ![IPCasting 2 streams](images/ipcasterrun.png "IPCasting 2 streams")
 
-## Docker image
-
-Downloadable image is available at Dockerhub. In case you use Docker follow the next steps to use ipcaster from Docker.
-
-We will use VLC to watch at the video stream.
-Open a console and type
-```sh
-# Launch VLC listening on port 50000
-vlc udp://@:50000
-```
-
-In another console 
-```sh
-# Download the image to your machine
-docker pull adolfomarver/ipcaster
-
-# Find out your docker0 network interface IP address
-ip a # In my case 172.17.0.1
-
-# Run the image on a container (the ipcaster.ts file is embedded in the image)
-docker run adolfomarver/ipcaster ipcaster -s tsfiles/ipcaster.ts 172.17.0.1 50000
-```
-## How to build
-
-The project uses CMake to support cross-platform building. IPCaster makes use of two 3rd party open source libraries: **boost** and **libevent**
-
-Linux (Ubuntu):
-
-```sh
-
-# Install 3rd party dependencies
-
-sudo apt install libboost-all-dev
-
-sudo apt install libevent-dev
-
-# Clone the repository
-
-https://github.com/adolfomarver/ipcaster.git
-
-# CMake build
-
-cd ipcaster
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make
-
-```
-Windows:
-
-You'll need *VisualStudio* and *cmake* installed in the machine.
-
-You also have to download or build yourself boost libraries
-https://www.boost.org/users/download
-
-
-
-```sh
-# Clone the repository
-
-https://github.com/adolfomarver/ipcaster.git
-
-# CMake build
-
-cd ipcaster
-md build
-cd build
-cmake ..
-
-```
-Now you should be able to open ipcaster/build/ipcaster.sln from Visual Studio.
-
-note: If boost is not detected, or link fails because its libs are not found:
-1) Try to update cmake to the latest version. 
-2) You may have to manually set the boost paths and version in the cmake file. Edit **ipcaster\CMakeLists.txt**. Substitute where **1_67_0** appears for your paths and version.
-```sh
-if(MSVC)
-	if(NOT HOME)
-    		# Try for USERPROFILE as HOME equivalent:
-		string(REPLACE "\\" "/" HOME "$ENV{USERPROFILE}")
-	endif()
-
-	set (BOOST_ROOT ${HOME}/repos/boost_1_67_0)
-	set (BOOST_INCLUDEDIR ${HOME}/repos/boost_1_67_0)
-	set (BOOST_LIBRARYDIR ${HOME}/repos/boost_1_67_0/stage/lib)
-
-    set(Boost_USE_STATIC_LIBS        ON) # only find static libs
-    set(Boost_USE_MULTITHREADED      ON)
-    set(Boost_USE_STATIC_RUNTIME    OFF)
-    find_package(Boost 1.67.0 REQUIRED COMPONENTS system program_options date_time regex)
-    include_directories(${Boost_INCLUDE_DIRS})
-endif()
-
-```
-
-## Tests
-If your working directory is not "ipcaster/build" you need to "cd" there before execute the tests.
-
-The UDP port 50000 must be free
-
-```sh
-# Run tests
-./tests
-```
 ## How to create broadcast compatible MPEG TS files
 
 The easiest and cheapest way to create TS files is by using the open source application FFmpeg. Here is an example for a typical distribution bitrate of 4Mbps using two pass encoding.
