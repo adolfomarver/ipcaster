@@ -1,0 +1,45 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: 'vs2017-win2016'
+
+steps:
+
+# boost are already installed in vs2017-win2016
+#- powershell: |
+#    ipcaster\ops\windows\install-build-env.ps1
+#  displayName: 'Setup build environment'
+
+- script: |
+    ops\windows\build.bat
+  displayName: 'Build'
+
+# Build with MSBuild
+- task: MSBuild@1
+  inputs:
+    solution: 'build/ipcaster.sln' 
+    #msbuildLocationMethod: 'version' # Optional. Options: version, location
+    #msbuildVersion: 'latest' # Optional. Options: latest, 16.0, 15.0, 14.0, 12.0, 4.0
+    #msbuildArchitecture: 'x86' # Optional. Options: x86, x64
+    #msbuildLocation: # Optional
+    #platform: # Optional
+    configuration: release
+    #msbuildArguments: # Optional
+    #clean: false # Optional
+    #maximumCpuCount: false # Optional
+    #restoreNugetPackages: false # Optional
+    #logProjectEvents: false # Optional
+    #createLogFile: false # Optional
+    #logFileVerbosity: 'normal' # Optional. Options: quiet, minimal, normal, detailed, diagnostic
+
+- script: |
+    ops\windows\test.bat
+  displayName: 'Test'
+
+
