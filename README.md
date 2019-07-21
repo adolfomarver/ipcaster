@@ -1,4 +1,8 @@
+Linux CI:\
 [![CircleCI](https://circleci.com/gh/adolfomarver/ipcaster.svg?style=svg)](https://circleci.com/gh/adolfomarver/ipcaster)
+
+Windows CI:\
+[![Build Status](https://dev.azure.com/adolfomarver/Pegasus/_apis/build/status/adolfomarver.ipcaster?branchName=master)](https://dev.azure.com/adolfomarver/Pegasus/_build/latest?definitionId=2&branchName=master)
 
 # IPCaster
 > MPEG Transport Stream over IP Sender
