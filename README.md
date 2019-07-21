@@ -46,7 +46,7 @@ In the next section these scripts are use to build and test the application insi
 ```sh
 
 # Clone the repository
-https://github.com/adolfomarver/ipcaster.git
+git clone https://github.com/adolfomarver/ipcaster.git
 
 # cd into ipcaster directory where Dockerfile resides
 cd ipcaster
