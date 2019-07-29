@@ -1,2 +1,2 @@
-cd ipcaster/build
+cd build
 ctest --output-on-failure
