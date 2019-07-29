@@ -19,7 +19,7 @@ Sample TS files are included with the project in the **tsfiles/** directory
 
 ## Platforms
 
-The code is written in C++11 and can be build, at least, in the following platforms:
+The code is written in C++11 and can be built, at least, in the following platforms:
 
 * Linux on x86/x64
 * Raspbian on Raspberry PI 3 B+
