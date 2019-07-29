@@ -185,6 +185,7 @@ private:
 };
 
 #define logfn(class_name) "[" << this << "]" << " " << #class_name << "::" << __func__ << "() - "
+#define logstaticfn(class_name) #class_name << "::" << __func__ << "() - "
 #define logclass(class_name) "[" << this << "]" << " " << #class_name << " - "
 #define fndbg(class_name) "[" + Logger::addrStr(this) + "]" + " " + #class_name + "::" + __func__ + "() - "
 #define fnstdbg(class_name) std::string(#class_name) + "::" + __func__ + "() - "

@@ -12,13 +12,13 @@ pool:
 steps:
 
 # boost are already installed in vs2017-win2016
-#- powershell: |
-#    ipcaster\ops\windows\install-build-env.ps1
-#  displayName: 'Setup build environment'
+- script: |
+    ops\windows\install-build-env.bat
+  displayName: 'Setup build environment'
 
 - script: |
     ops\windows\build.bat
-  displayName: 'Build'
+  displayName: 'CMake'
 
 # Build with MSBuild
 - task: MSBuild@1
@@ -26,7 +26,7 @@ steps:
     solution: 'build/ipcaster.sln' 
     #msbuildLocationMethod: 'version' # Optional. Options: version, location
     #msbuildVersion: 'latest' # Optional. Options: latest, 16.0, 15.0, 14.0, 12.0, 4.0
-    #msbuildArchitecture: 'x86' # Optional. Options: x86, x64
+    msbuildArchitecture: 'x86'
     #msbuildLocation: # Optional
     #platform: # Optional
     configuration: release

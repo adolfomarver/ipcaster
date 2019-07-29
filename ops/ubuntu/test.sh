@@ -1,2 +1,3 @@
 cd ipcaster/build
-ctest
+#ctest --output-on-failure
+./tests

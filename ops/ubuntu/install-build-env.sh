@@ -7,7 +7,10 @@ apt install -y gcc g++
 apt install -y cmake
 
 # install boost
-apt install -y libboost1.62-all-dev
+apt install -y libboost-program-options-dev libboost-system-dev
 
 # install libevent
 apt install -y libevent-dev
+
+# install cpprest
+apt install -y libcpprest-dev

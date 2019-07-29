@@ -1,19 +1,20 @@
 cmake_minimum_required(VERSION 3.0)
 
-#Jsoncpp amalgamated file
-set(jsoncpp ${CMAKE_CURRENT_LIST_DIR}/../third_party/jsoncpp/jsoncpp.cpp)
+add_executable(ipcaster main.cpp IPCaster.cpp)
 
-add_executable(ipcaster main.cpp ${jsoncpp})
-
-target_include_directories(ipcaster PRIVATE ../third_party/jsoncpp/json)
 target_include_directories(ipcaster PRIVATE ../)
 
 # Windows
 if (MSVC)
-	target_link_libraries(ipcaster ${Boost_LIBRARIES})
+	set(cpprestsdk_DIR "${HOME}/vcpkg/installed/x86-windows/share/cpprestsdk")
+	find_package(cpprestsdk REQUIRED)
+	target_link_libraries(ipcaster ${Boost_LIBRARIES} cpprestsdk::cpprest)
+	add_definitions(-D _WIN32_WINNT=0x0601)
 else()
 # Linux
-	target_link_libraries(ipcaster boost_system boost_program_options pthread event)
+	find_package(OpenSSL REQUIRED)
+	#target_link_libraries(ipcaster boost_system boost_program_options pthread event cpprestsdk::cpprest)
+	target_link_libraries(ipcaster boost_system boost_program_options pthread event cpprest OpenSSL::SSL)
 endif()
 
 

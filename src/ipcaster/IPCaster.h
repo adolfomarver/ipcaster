@@ -17,13 +17,10 @@
 #pragma once 
 
 #include <mutex>
-#include <iomanip>
-#include <ctime>
 #include <future>
-#include <json.h>
 
-#include "ipcaster/base/Logger.hpp"
-#include "ipcaster/source/SourceFactory.hpp"
+#include <cpprest/json.h>
+
 #include "ipcaster/net/DatagramsMuxer.hpp"
 #include "ipcaster/media/Timer.hpp"
 
@@ -32,6 +29,11 @@
 
 namespace ipcaster
 {
+
+namespace api
+{
+    class Server;
+}
 
 /**
  * The entry object for the ipcaster app. 
@@ -44,12 +46,8 @@ class IPCaster
 {
 public:
 
-    IPCaster() 
-    : main_loop_timeout_(100), server_mode_(false)
-    {
-
-    }
-
+    IPCaster();
+    
 	// More than 1(s) at 270Mbps 1 TS packet per datagram
 	static const uint32_t MAX_FIFO_DATAGRAMS_PER_STREAM = 180000; 
 
@@ -58,30 +56,11 @@ public:
      *
      * @param json_stream The parameters of the stream in json format.
      * 
+     * @returns Json object with the new stream_id
+     * 
      * @throws std::exception Thrown on failure.
      */
-    void createStream(Json::Value& json_stream ) {
-
-        std::lock_guard<std::mutex> lock(streams_mutex_);
-
-        auto udp_stream = datagrams_muxer_.createStream(json_stream["endpoint"]["ip"].asString(), 
-            static_cast<uint16_t>(json_stream["endpoint"]["port"].asUInt()));
-
-        auto source = SourceFactory<MPEG2TSFileToUDP>::create(json_stream["source"].asString(), *udp_stream);
-        auto stream = std::make_shared<Stream>(json_stream, source);
-
-        // Observe the stream to handle eof or error events
-        source->attachObserver(stream);
-        stream->attachObserverStrong(std::make_shared<StreamEventListener>(*this, *stream));
-
-        streams_.push_back(stream);
-
-        stream->start();
-
-        Logger::get().info() << "Stream" << stream->id() << " " 
-            << stream->getSourceName() << " -> " << stream->getTargetName() 
-            << std::endl;
-    }
+    web::json::value createStream(web::json::value json_stream );
 
     /**
      * Remove a stream. The stream is stopped and freed 
@@ -92,22 +71,12 @@ public:
      * 
      * @throws std::exception Thrown on failure.
      */
-    void deleteStream(uint32_t stream_id, bool flush = false) 
-    {
-        std::lock_guard<std::mutex> lock(streams_mutex_);
+    void deleteStream(uint32_t stream_id, bool flush = false);
 
-        auto stream = std::find_if(streams_.begin(), streams_.end(), [&] (std::shared_ptr<Stream>& stream) { 
-            return stream->id() == stream_id;
-            });
-
-        assert(stream != streams_.end());
-
-        (*stream)->stop(flush);
-
-        streams_.erase(stream);
-
-        Logger::get().info() << "Stream" << stream_id << " deleted" << std::endl;
-    }
+    /**
+     * @returns An array with the running streams
+     */
+    web::json::value listStreams();
 
     /**
      * Select the sever mode (on / off)
@@ -118,15 +87,12 @@ public:
      *
      * @param enable_server_mode (true/false)
      * 
+     * @param listening_port In case service_mode is enabled this variable indicate the
+     * listening port
+     * 
      * @pre This function must be called before IPCaster::run()
      */
-    void setServerMode(bool enable_server_mode) 
-    {
-        server_mode_ = enable_server_mode;
-        // In server mode there's no console so streaming time is not printed
-        // and we don't need high frequency status refresh
-        main_loop_timeout_ = std::chrono::milliseconds(server_mode_ ? 1000 : 100);
-    }
+    void setServiceMode(bool enable_server_mode, uint16_t listening_port = 8080); 
 
     /**
      * IPCaster application main loop. Does maintenance tasks until exit command is received (server mode)
@@ -136,25 +102,9 @@ public:
      * 
      * @throws std::exception Thrown on failure.
      */
-    int run()
-    {
-        while(1) {
-            std::this_thread::sleep_for(main_loop_timeout_);
+    int run();
 
-            // Collect global unmanaged futures already finished
-            FuturesCollector::get().collect();
-
-            printStatus();
-
-            // If not in server mode and work is done
-            if(!server_mode_ && streams_.size() == 0)
-                break;
-        }
-
-        printf("\n");
-
-        return 0;
-    }
+    void stop();
 
     private:
 
@@ -165,13 +115,29 @@ public:
     std::mutex streams_mutex_;
 
     // Server mode on/off
-    bool server_mode_;
+    bool service_mode_;
+
+    // Service listening port
+    uint16_t service_port_;
 
     // One datagrams muxer per ethernet interface is required to orchestrate packet order and timing for all the SMPTE2022 streams sent to that interface
     DatagramsMuxer<Timer> datagrams_muxer_;
 
     // Main loop maintenance tasks review period
     std::chrono::milliseconds main_loop_timeout_;
+
+    // REST api server
+    std::shared_ptr<api::Server> api_server_;
+
+    /**
+     * Called by IPCaster::run to print the current status in the console
+     */
+    void printStatus();
+
+    /**
+     * Called every time an stream is created or deleted
+     */
+    void traceMuxerStatus();
 
     /**
      * Handles the events produced by the streams objects
@@ -234,41 +200,6 @@ public:
             );
         }
     }; // IPCaster::StreamEventListener
-
-    /**
-     * Called by IPCaster::run to print the current status in the console
-     */
-    void printStatus()
-    {
-        using Clock = std::chrono::system_clock;
-        using TimePoint = std::chrono::time_point<Clock>;
-
-        std::lock_guard<std::mutex> lock(streams_mutex_);
-
-        auto streams = datagrams_muxer_.getStreams();
-
-        if(streams.size()) {
-
-            auto stream_time = streams[0]->getTime();
-			time_t in_time_t = std::chrono::duration_cast<std::chrono::seconds> (stream_time).count();
-
-            std::stringstream ss;
-            ss << std::put_time(std::gmtime(&in_time_t), "%T");
-
-            std::chrono::nanoseconds max_burst_duration;
-
-            auto bandwidth = datagrams_muxer_.getOutputBandwidth(max_burst_duration);
-
-            if(Logger::get().getVerbosity() >= Logger::Level::INFO) {
-            printf("\rIP casting %u streams. Time %s.%d Bandwidth %.3fMbps Burst %.1f(ms)      ", static_cast<uint32_t>(streams.size()),
-                ss.str().c_str(),
-                static_cast<int>(stream_time.count()/100000000.0)%10, 
-                bandwidth / 1000000.0,
-                max_burst_duration.count() / 1000000.0);
-            fflush(stdout);
-            }
-        }
-    }
 
 }; // IPCaster
 

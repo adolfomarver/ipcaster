@@ -15,8 +15,9 @@
 //
 
 #include <iostream>
+#include <csignal>
 
-#include "IPCaster.hpp"
+#include "IPCaster.h"
 #include "ConsoleOptions.hpp"
 
 #include "base/Logger.hpp"

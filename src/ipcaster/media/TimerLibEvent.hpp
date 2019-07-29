@@ -21,6 +21,7 @@
 #include <condition_variable>
 
 #include <event2/event.h>
+#include <event2/util.h>
 
 #include "ipcaster/base/Exception.hpp"
 #include "ipcaster/base/Logger.hpp"
@@ -78,6 +79,10 @@ public:
             if (!timeout_event)
                 throw Exception(fndbg(TimerLibEvent) + " event_new failed ");
             event_add(timeout_event, &timeout);
+
+            /* set a handler for interrupt, so we can quit cleanly */
+             event* sigint_event = evsignal_new(event_base_, SIGINT, &TimerLibEvent::onSigint, this);
+            event_add(sigint_event, NULL);
 
             // run the event loop until interrupted 
             event_base_dispatch(event_base_);
@@ -149,6 +154,13 @@ private:
         auto timer = static_cast<TimerLibEvent*>(arg);        
         timer->interrupt_received_ = true;
         timer->on_timer_cv_.notify_one();
+    }
+
+    static void onSigint(evutil_socket_t sig, short events, void *arg)
+    {
+        auto timer = static_cast<TimerLibEvent*>(arg);        
+        event_base_loopbreak(timer->event_base_);
+        exit(SIGINT);
     }
 };
 

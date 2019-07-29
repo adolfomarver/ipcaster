@@ -18,16 +18,15 @@
 
 #include <string>
 #include <vector>
-#include <json.h>
 
 #include <boost/program_options.hpp>
 
 #include "ipcaster/base/Logger.hpp"
-#include "ipcaster/IPCaster.hpp"
+#include "ipcaster/IPCaster.h"
+#include "ipcaster/api/HTTP.hpp"
 
 namespace ipcaster
 {
-
 /**
  * Parses the application console parameters and applies the setup to the ipcaster main object.
  */
@@ -43,7 +42,7 @@ public:
     : ip_caster_(ip_caster)
     {
     }
-
+    
     /**
      * Parses the parameters and applies the configuration to the IPCaster object
      * 
@@ -51,39 +50,77 @@ public:
      * 
      * @param argv The argv param from main()
      */
+    
     void parse(int argc, const char* argv[])
     {
         boost::program_options::options_description desc("Allowed options");
         desc.add_options()
+            ("command", boost::program_options::value<std::string>(), "command to execute {service | play}")
+            ("args", boost::program_options::value<std::vector<std::string> >(), "Arguments for command")
+
             ("help,h", "shows this help message")
 
             ("license,l", "shows the license")
 
             ("verbose,v", boost::program_options::value<int>()->implicit_value(4),
                   "select verbosity level (0 = QUIET, 1 = FATAL, 2 = ERROR, 3 = WARNING, 4 = INFO 5 = DEBUG0 6 = DEBUG1)")
-
-            ("stream,s", boost::program_options::value<std::vector<std::string>>(),
-                  "stream")
         ;
 
         boost::program_options::positional_options_description p;
-        p.add("stream", -1);
+        p.add("command", 1).
+        add("args", -1);
 
         boost::program_options::variables_map vm;
-        boost::program_options::store(boost::program_options::command_line_parser(argc, argv).
-                  options(desc).positional(p).run(), vm);
-        boost::program_options::notify(vm);
+        auto parsed = boost::program_options::command_line_parser(argc, argv).
+                  options(desc).positional(p).allow_unregistered().run();
+        boost::program_options::store(parsed, vm);
 
         if (vm.count("help") || argc == 1) {
-            std::cout << "Usage: ipcaster [-s {ts file} {target ip} {target port} ] ... [-s ...]\n";
+            std::cout << "Usage:" << std::endl << std::endl << "ipcaster [-v] [-l] [-h] [service {service_args} | play {play_args}}" << std::endl << std::endl;
             std::cout << desc << std::endl;
-            std::cout << "Example: ipcaster -s stream1.ts 127.0.0.1 50000 -s stream2.ts 127.0.0.1 50001" << std::endl;
+            std::cout << "   {service_args} [-p]" << std::endl;
+            std::cout << "   [-p, --port]]\t      http listening port" << std::endl << std::endl;
+            std::cout << "   {play_args} [{file} {target_ip} {target_port}] ..." << std::endl << std::endl;
+            std::cout << "Examples:" << std::endl << std::endl;
+            std::cout << "ipcaster service" << std::endl;
+            std::cout << "ipcaster service -p 8080" << std::endl;
+            std::cout << "ipcaster play file1.ts 127.0.0.1 50000" << std::endl;
+            std::cout << "ipcaster play file1.ts 127.0.0.1 50000 file2.ts 127.0.0.1 50001" << std::endl;
+            std::cout << "ipcaster -v 5 service" << std::endl;
             exit(0);
         }
 
         if (vm.count("license")) {
             printLicense();
             exit(0);
+        }
+
+        if(vm["command"].as<std::string>() == "service") {
+            boost::program_options::options_description service_desc("service options");
+            service_desc.add_options()
+                ("port,p", boost::program_options::value<uint16_t>()->implicit_value(8080), "Listening port");
+
+            // Collect all the unrecognized options from the first pass. This will include the
+            // (positional) command name, so we need to erase that.
+            std::vector<std::string> opts = boost::program_options::collect_unrecognized(parsed.options, boost::program_options::include_positional);
+            opts.erase(opts.begin());
+            
+            // Reparse
+            boost::program_options::store(boost::program_options::command_line_parser(opts).options(service_desc).run(), vm);
+
+            uint16_t port = 8080;
+            if(vm.count("port"))
+                port = vm["port"].as<uint16_t>();
+
+            ip_caster_.setServiceMode(true, port);
+        }
+        else if(vm["command"].as<std::string>() == "play") {
+            // Collect all the unrecognized options from the first pass. This will include the
+            // (positional) command name, so we need to erase that.
+            std::vector<std::string> opts = boost::program_options::collect_unrecognized(parsed.options, boost::program_options::include_positional);
+            opts.erase(opts.begin());
+            auto streams = parsePlay(opts);
+            setupStreams(streams);
         }
 
         if (vm.count("verbose")) {
@@ -95,44 +132,6 @@ public:
 
             Logger::get().setVerbosity(verbosity);
         }
-
-        if (vm.count("stream"))
-        {
-            auto streams = parseStreams(vm["stream"].as<std::vector<std::string>>());
-            setupStreams(streams);
-        }
-    }
-
-    /**
-     * Parses the parameters, translate them to json and applies the configuration to the IPCaster object
-     * 
-     * @param streams Strings vector reference where every element is an space separated command line argument 
-     */
-    std::vector<Json::Value> parseStreams(const std::vector<std::string>& streams)
-    {
-        std::vector<Json::Value> json_streams;
-
-        // 3 Elements form an stream {ts file} {target ip} {target port}
-        for(int i = 0;i < streams.size(); i+=3) {
-            if(i+3 <= streams.size()) {
-                Json::Value json_stream;
-
-                json_stream["source"] = checkPath(streams[i]);
-                Json::Value endpoint;
-
-                endpoint["ip"] = checkIP(streams[i+1]);
-                endpoint["port"] = checkPort(streams[i+2]);
-
-                json_stream["endpoint"] = endpoint;
-
-                json_streams.push_back(json_stream);
-            }
-            else {
-                std::cerr << "incomplete stream declaration: " << streams[i] << std::endl;
-            }
-        }
-
-        return json_streams;
     }
 
 private:
@@ -159,9 +158,41 @@ private:
     uint16_t checkPort(const std::string& port) { return static_cast<uint16_t>(atoi(port.c_str())); }
 
     /**
+     * Parses the parameters, translate them to json and applies the configuration to the IPCaster object
+     * 
+     * @param streams Strings vector reference where every element is an space separated command line argument 
+     */
+    std::vector<web::json::value> parsePlay(const std::vector<std::string>& streams)
+    {
+        std::vector<web::json::value> json_streams;
+
+        // 3 Elements form an stream {ts file} {target ip} {target port}
+        for(int i = 0;i < streams.size(); i+=3) {
+            if(i+3 <= streams.size()) {
+                web::json::value json_stream;
+
+                json_stream[U("source")] = web::json::value(UTF16(checkPath(streams[i])));
+                web::json::value endpoint;
+
+                endpoint[U("ip")] = web::json::value(UTF16(checkIP(streams[i+1])));
+                endpoint[U("port")] = web::json::value(checkPort(streams[i+2]));
+
+                json_stream[U("endpoint")] = endpoint;
+
+                json_streams.push_back(json_stream);
+            }
+            else {
+                std::cerr << "incomplete stream declaration: " << streams[i] << std::endl;
+            }
+        }
+
+        return json_streams;
+    }
+
+    /**
      * Creates the streams in the IPCaster object
      */
-    void setupStreams(std::vector<Json::Value>& streams)
+    void setupStreams(std::vector<web::json::value>& streams)
     {
         for(auto& stream : streams) {
             try {

@@ -1,3 +1,5 @@
 ﻿REM Run tests
-cd build\release
+@Set PATH=%PATH%;%USERPROFILE%\vcpkg\installed\x86-windows\bin
+@Set PATH=%PATH%;%USERPROFILE%\vcpkg\installed\x86-windows\debug\bin
+cd ipcaster\build\release
 tests

@@ -5,11 +5,13 @@
 [![Build Status](https://dev.azure.com/adolfomarver/Pegasus/_apis/build/status/adolfomarver.ipcaster?branchName=master)](https://dev.azure.com/adolfomarver/Pegasus/_build/latest?definitionId=2&branchName=master)
 
 # IPCaster
-> MPEG Transport Stream over IP Sender
+> Video Server Microservice
 
-IPCaster is an open source application capable of simultaneously sending one or more MPEG-TS (ITU-T H.222) files through an IP network to a remote endpoint. The sending real-time bitrate of the stream will match the bitrate of the file so it can be received, decoded and rendered in real-time at the remote endpoint
+IPCaster is an application capable of simultaneously sending one or more MPEG-TS (ITU-T H.222) files through an IP network to a remote endpoint. The sending real-time bitrate of the stream will match the bitrate of the file so it can be received, decoded and rendered in real-time at the remote endpoint
 
 The IP encapsulation is based on the SMPTE2022-2 standard.
+
+IPCaster can be run as an standalone service controlled through its REST API, or can be also executed as a video sender command line application.
 
 ### About MPEG-TS (ISO/IEC 13818-1 or ITU-T Recommendation H.222.0)
 
@@ -25,20 +27,7 @@ The code is written in C++11 and can be build, at least, in the following platfo
 * Raspbian on Raspberry PI 3 B+
 * Windows on x86/x64
 
-The project uses CMake to support cross-platform building.
-
-## Usage
-
-```sh
-ipcaster -s ts_file target_ip target_port ... [-s ...]
-```
-
-
-**ts_file** Is the file to send.
-
-**target_ip** Is the IPv4 address of the endpoint.
-
-**target_port** Is the IP port of the endpoint.
+CMake is used to support cross-platform building.
 
 ## Build and test
 
@@ -56,18 +45,21 @@ git clone https://github.com/adolfomarver/ipcaster.git
 cd ipcaster
 
 # Build the docker image. 
-# The Dockerfile installs the build dependencies, build ipcaster and run the tests in an intermediate stage. 
-# Then, in the final stage, generates a minimum dependency image with the required artifacts from the intermediate stage.
+# The Dockerfile installs the build dependencies,
+# build ipcaster and run the tests in an intermediate stage. 
+# Then, in the final stage, generates a minimum dependency image 
+# with the required artifacts from the intermediate stage.
 docker build -t ipcaster .
 
 ```
+## Usage as a service example
 
-## Examples
-
-We'll use the docker image generated in the previous step
-We'll also need VLC in these examples to watch at the video output.
+We'll use the docker image generated in the previous step, We'll also need: cURL to send REST requests to the service and VLC to watch at the video output.
 
 ```sh
+# Install cURL
+sudo apt install curl
+
 # Install VLC
 sudo snap install vlc
 
@@ -75,28 +67,50 @@ sudo snap install vlc
 vlc udp://@:50000
 ```
 
-In another console 
+Open another console 
+```sh
+# Launch VLC listening in the port 50001
+vlc udp://@:50001
+```
+
+Now we have two receivers waiting for video streams on different ports.
+
+Open another console
 ```sh
 # Find out your docker0 network interface IP address
 ip a # In my case 172.17.0.1
 
-# Run the container (the ipcaster.ts file is embedded in the image)
-docker run ipcaster ipcaster -s ipcaster/tsfiles/ipcaster.ts 172.17.0.1 50000
+# Run ipcaster as a service exposing the port 8080
+docker run -p 8080:8080 ipcaster ipcaster service
+
+# Send a POST request to create a stream for ipcaster.ts to be sent to VLC on port 50000
+curl -d '{"source": "ipcaster/tsfiles/ipcaster.ts", "endpoint": {"ip": "172.17.0.1", "port": 50000}}' -H "Content-Type: application/json" -X POST http://localhost:8080/streams
+
+# Send a POST request to create a stream for timer.ts to be sent to VLC on port 50001
+curl -d '{"source": "ipcaster/tsfiles/timer.ts", "endpoint": {"ip": "172.17.0.1", "port": 50001}}' -H "Content-Type: application/json" -X POST http://localhost:8080/streams
 ```
 
-### Sending several files simultaneously
-```sh
-# Launch 2 VLCs (in two different terminals) listening on ports 50000, 50001
-vlc udp://@:50000
-vlc udp://@:50001
-
-#In another console 
-#Run the container (ipcaster.ts and timer.ts files are embedded in the image)
-docker run ipcaster ipcaster -s ipcaster/tsfiles/ipcaster.ts 172.17.0.1 50000 -s ipcaster/tsfiles/timer.ts 172.17.0.1 50001
-
-```
+Now we have two streams running!
 
 ![IPCasting 2 streams](images/ipcasterrun.png "IPCasting 2 streams")
+
+```sh
+# Let's check the running streams list
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X GET http://localhost:8080/streams
+```
+
+Stop a stream
+
+```sh
+# Delete the stream with Id 0
+curl -X DELETE http://localhost:8080/streams/0
+```
+
+## Usage as a command line app example
+```sh
+# Sends ipcaster.ts -> 172.17.0.1:50000 and timer.ts -> 172.17.0.1:50001
+docker run -p 8080:8080 ipcaster ipcaster play ipcaster/tsfiles/ipcaster.ts 172.17.0.1 50000 ipcaster/tsfiles/timer.ts 172.17.0.1 50001
+```
 
 ## How to create broadcast compatible MPEG TS files
 
@@ -114,7 +128,6 @@ ffmpeg -i myvideo.mp4 -c:v libx264 -preset veryslow -profile:v high -level 4.0 -
 
 ## Roadmap
 
-IPCaster is today only a console application with little features, but the plan is to evolve it to become a full server manageable through a web-based user interface or a REST API. In order to complete those goals the next steps will be:
+Next steps:
 
-* Add a REST API public and documented.
 * Add a front end HTML interface.

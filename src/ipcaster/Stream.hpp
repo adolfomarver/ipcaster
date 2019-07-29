@@ -17,7 +17,7 @@
 #pragma once
 
 #include <memory>
-#include <json.h>
+#include <cpprest/json.h>
 
 #include "ipcaster/base/Observer.hpp"
 #include "ipcaster/source/StreamSource.h"
@@ -61,20 +61,18 @@ public:
      * 
      * @param source Shared pointer to the source of the stream
      */
-    Stream(Json::Value& stream_json, std::shared_ptr<StreamSource> source)
-        :   stream_json_(std::move(stream_json_)),
+    Stream(web::json::value stream_json, std::shared_ptr<StreamSource> source)
+        :   stream_json_(stream_json),
             source_(source)
     {
-        stream_json_ = stream_json;
-
         id_ = IDSingleton::next();
-        stream_json_["id"] = id_;
+        stream_json_[U("id")] = id_;
     }
 
     /**
      * @returns The current parameters of the stream
      */
-    inline const Json::Value& json() const { return stream_json_; }
+    inline const web::json::value& json() const { return stream_json_; }
 
     /**
      * @returns The id of the stream
@@ -103,7 +101,7 @@ public:
      */
     std::string getTargetName() 
     { 
-        return stream_json_["endpoint"]["ip"].asString() + ":" + stream_json_["endpoint"]["port"].asString();
+        return utility::conversions::to_utf8string(stream_json_[U("endpoint")][U("ip")].as_string()) + ":" + std::to_string(stream_json_[U("endpoint")][U("port")].as_integer());
     }
 
 private:
@@ -112,7 +110,7 @@ private:
     uint32_t id_;
 
     // Current parameters and status of the stream
-    Json::Value stream_json_;
+    web::json::value stream_json_;
 
     // Strong reference to the source of the stream
     std::shared_ptr<StreamSource> source_;
