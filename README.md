@@ -7,9 +7,7 @@
 # IPCaster
 > Video Server Microservice
 
-IPCaster is an application capable of simultaneously sending one or more MPEG-TS (ITU-T H.222) files through an IP network to a remote endpoint. The sending real-time bitrate of the stream will match the bitrate of the file so it can be received, decoded and rendered in real-time at the remote endpoint
-
-The IP encapsulation is based on the SMPTE2022-2 standard.
+IPCaster is an application capable of simultaneously sending several MPEG-TS files through an IP network to a remote endpoint. The IP encapsulation is based on the SMPTE2022-2 standard, the sending real-time bitrate of the stream will match the bitrate of the file so it can be received, decoded and rendered in real-time at the remote endpoint
 
 IPCaster can be run as an standalone service controlled through its REST API, or can be also executed as a video sender command line application.
 
