@@ -53,10 +53,7 @@ web::json::value IPCaster::createStream(web::json::value json_stream )
         << stream->getSourceName() << " -> " << stream->getTargetName() 
         << std::endl;
 
-    web::json::value ret;
-    ret[U("streamId")] = stream->id();
-
-    return ret;
+    return stream->json();
 }
 
 void IPCaster::deleteStream(uint32_t stream_id, bool flush) 
@@ -104,7 +101,7 @@ int IPCaster::run()
 {
     if(service_mode_) {
         Logger::get().info() << "IPCaster service running." << std::endl;
-        api_server_ = std::make_shared<api::Server>(std::make_shared<api::APIContext>(*this),"http://0.0.0.0:" + std::to_string(service_port_));
+        api_server_ = std::make_shared<api::Server>(std::make_shared<api::APIContext>(*this),"http://0.0.0.0:" + std::to_string(service_port_) + "/api");
     }
 
     while(1) {

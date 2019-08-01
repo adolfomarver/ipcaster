@@ -27,6 +27,10 @@ The code is written in C++11 and can be built, at least, in the following platfo
 
 CMake is used to support cross-platform building.
 
+## REST API
+
+[IPCaster API Reference](https://documenter.getpostman.com/view/8246352/SVYkw1dB)
+
 ## Build and test
 
 DevOps scripts for all the supported platforms can be found at **ipcaster/ops/[platform]**.
@@ -79,13 +83,13 @@ Open another console
 ip a # In my case 172.17.0.1
 
 # Run ipcaster as a service exposing the port 8080
-docker run -p 8080:8080 ipcaster ipcaster service
+docker run -p 8080:8080 ipcaster service
 
 # Send a POST request to create a stream for ipcaster.ts to be sent to VLC on port 50000
-curl -d '{"source": "ipcaster/tsfiles/ipcaster.ts", "endpoint": {"ip": "172.17.0.1", "port": 50000}}' -H "Content-Type: application/json" -X POST http://localhost:8080/streams
+curl -d '{"source": "ipcaster/tsfiles/ipcaster.ts", "endpoint": {"ip": "172.17.0.1", "port": 50000}}' -H "Content-Type: application/json" -X POST http://localhost:8080/api/streams
 
 # Send a POST request to create a stream for timer.ts to be sent to VLC on port 50001
-curl -d '{"source": "ipcaster/tsfiles/timer.ts", "endpoint": {"ip": "172.17.0.1", "port": 50001}}' -H "Content-Type: application/json" -X POST http://localhost:8080/streams
+curl -d '{"source": "ipcaster/tsfiles/timer.ts", "endpoint": {"ip": "172.17.0.1", "port": 50001}}' -H "Content-Type: application/json" -X POST http://localhost:8080/api/streams
 ```
 
 Now we have two streams running!
@@ -94,25 +98,25 @@ Now we have two streams running!
 
 ```sh
 # Let's check the running streams list
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X GET http://localhost:8080/streams
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X GET http://localhost:8080/api/streams
 ```
 
 Stop a stream
 
 ```sh
 # Delete the stream with Id 0
-curl -X DELETE http://localhost:8080/streams/0
+curl -X DELETE http://localhost:8080/api/streams/0
 ```
 
 ## Usage as a command line app example
 ```sh
 # Sends ipcaster.ts -> 172.17.0.1:50000 and timer.ts -> 172.17.0.1:50001
-docker run -p 8080:8080 ipcaster ipcaster play ipcaster/tsfiles/ipcaster.ts 172.17.0.1 50000 ipcaster/tsfiles/timer.ts 172.17.0.1 50001
+docker run -p 8080:8080 ipcaster play ipcaster/tsfiles/ipcaster.ts 172.17.0.1 50000 ipcaster/tsfiles/timer.ts 172.17.0.1 50001
 ```
 
 ## How to create broadcast compatible MPEG TS files
 
-The easiest and cheapest way to create TS files is by using the open source application FFmpeg. Here is an example for a typical distribution bitrate of 4Mbps using two pass encoding.
+The easiest way to create TS files is by using the open source application FFmpeg. Here is an example for a typical distribution bitrate of 4Mbps using two pass encoding.
 
 Just substitute "myvideo.mp4" for the name of the file you want to encode.
 
@@ -128,4 +132,4 @@ ffmpeg -i myvideo.mp4 -c:v libx264 -preset veryslow -profile:v high -level 4.0 -
 
 Next steps:
 
-* Add a front end HTML interface.
+* Integrate the service in a distributed / scalable webapp including an HTML front-end.

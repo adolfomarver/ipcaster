@@ -3,6 +3,7 @@ COPY src /ipcaster/src
 COPY ops /ipcaster/ops
 COPY tsfiles /ipcaster/tsfiles
 COPY CMakeLists.txt /ipcaster
+WORKDIR /ipcaster
 RUN /ipcaster/ops/ubuntu/install-build-env.sh
 RUN /ipcaster/ops/ubuntu/build.sh 
 RUN /ipcaster/ops/ubuntu/test.sh
@@ -13,5 +14,5 @@ COPY --from=intermediate /ipcaster/build/ipcaster /usr/local/bin
 COPY ops/ubuntu /ipcaster/ops/ubuntu
 COPY tsfiles /ipcaster/tsfiles
 RUN /ipcaster/ops/ubuntu/install-prod-env.sh
-RUN ipcaster
+ENTRYPOINT ["ipcaster"]
 

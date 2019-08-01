@@ -57,7 +57,18 @@ private:
         // /streams
         listeners_.push_back(std::make_shared<Listener>(UTF16(base_uri + "/streams")));
         controllers::Streams::registerMethods(*listeners_.back(), api_context);
-        listeners_.back()->open();
+        listeners_.back()->open().then([](pplx::task<void> t) { handleError(t); });
+    }
+
+    static void handleError(pplx::task<void>& t)
+    {
+        try {
+            t.get();
+        }
+        catch (std::exception& e) {
+            Logger::get().fatal() << logstaticfn(Server) << e.what() << std::endl;
+            Logger::get().fatalErrorExitApp(1);
+        }
     }
 
     std::vector<std::shared_ptr<Listener>> listeners_;

@@ -125,6 +125,12 @@ public:
         setVerbosity(level);
     }
 
+    void fatalErrorExitApp(int exit_code) 
+    {
+        fatal() << "Fatal error. Exit with " << exit_code << std::endl;
+        exit(exit_code);
+    }
+
     /** @returns The current verbosity level */
     inline Level getVerbosity() { return verbosity_; }
 
