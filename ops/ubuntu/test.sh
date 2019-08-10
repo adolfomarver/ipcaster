@@ -1,4 +1,4 @@
-cd ipcaster/build
+cd build
 # test with ctest
 ctest --output-on-failure
 # launch ipcaster as service in background
