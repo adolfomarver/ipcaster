@@ -5,7 +5,9 @@ COPY tsfiles /ipcaster/tsfiles
 COPY CMakeLists.txt /ipcaster
 WORKDIR /ipcaster
 RUN /ipcaster/ops/ubuntu/install-build-env.sh
+WORKDIR /
 RUN /ipcaster/ops/ubuntu/build.sh 
+WORKDIR /
 RUN /ipcaster/ops/ubuntu/test.sh
 RUN cp /ipcaster/build/ipcaster /usr/local/bin
 
